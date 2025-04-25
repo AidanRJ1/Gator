@@ -12,29 +12,64 @@ type Config struct {
 	CurrentUserName string `json:"current_user_name"`
 }
 
-func (config Config) SetUser(currentUser string) error {
+func (cfg Config) SetUser(currentUser string) error {
+	cfg.CurrentUserName = currentUser
+	
+	err := write(cfg)
+	if err != nil {
+		return err
+	}
+	
 	return nil
 }
 
 func Read() (Config, error) {
-	homeDir, err := os.UserHomeDir()
+	filePath, err := getConfigFilePath()
 	if err != nil {
 		return Config{}, err
 	}
-	filePath := homeDir + "/" + configFileName
 
 	dat, err := os.ReadFile(filePath)
 	if err != nil {
 		return Config{}, err
 	}
 
-	var config Config
-	err = json.Unmarshal(dat, &config)
+	var cfg Config
+	err = json.Unmarshal(dat, &cfg)
 	if err != nil {
 		return Config{}, err
 	}	
 	
-	return config, nil
+	return cfg, nil
+}
+
+func getConfigFilePath() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	
+	filePath := homeDir + "/" + configFileName
+	return filePath, nil
+}
+
+func write(cfg Config) error {
+	filePath, err := getConfigFilePath()
+	if err != nil {
+		return err
+	}
+
+	dat, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(filePath, dat, 0666)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func config() {

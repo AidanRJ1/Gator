@@ -7,11 +7,18 @@ import (
 )
 
 func main() {
-	config, err := config.Read()
+	cfg, err := config.Read()
 	if err != nil {
 		errorMsg := fmt.Errorf("error occured while reading config file: %v", err)
 		fmt.Println(errorMsg)
 	}
+	fmt.Println(cfg)
 
-	fmt.Println(config)
+	err = cfg.SetUser("Aidan")
+	if err != nil {
+		errorMsg := fmt.Errorf("error occured while writing to config: %v", err)
+		fmt.Println(errorMsg)
+	} else {
+		fmt.Println("Successfuly written to file")
+	}
 }
