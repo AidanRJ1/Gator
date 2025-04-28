@@ -12,7 +12,3 @@ RETURNING *;
 
 -- name: GetFeeds :many
 SELECT * FROM feeds;
-
--- name: GetFeedUserName :one
-SELECT name FROM users
-WHERE id = $1;

@@ -7,7 +7,6 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -54,18 +53,6 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 		&i.UserID,
 	)
 	return i, err
-}
-
-const getFeedUserName = `-- name: GetFeedUserName :one
-SELECT name FROM users
-WHERE id = $1
-`
-
-func (q *Queries) GetFeedUserName(ctx context.Context, id uuid.UUID) (sql.NullString, error) {
-	row := q.db.QueryRowContext(ctx, getFeedUserName, id)
-	var name sql.NullString
-	err := row.Scan(&name)
-	return name, err
 }
 
 const getFeeds = `-- name: GetFeeds :many
