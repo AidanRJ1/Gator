@@ -77,6 +77,10 @@ func handlerUsers(s *state, cmd command) error {
 		return fmt.Errorf("error getting users from database: %w", err)
 	}
 
+	if len(users) == 0 {
+		return fmt.Errorf("no users in database")
+	}
+
 	for _ ,user := range users {
 		name := user.Name.String
 		if name == s.cfg.CurrentUserName {
