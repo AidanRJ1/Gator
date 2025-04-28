@@ -1,29 +1,61 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
+	"log"
+	"os"
 
 	"github.com/AidanRJ1/gator/internal/config"
+	"github.com/AidanRJ1/gator/internal/database"
+	_ "github.com/lib/pq"
 )
 
+type state struct {
+	db *database.Queries
+	cfg *config.Config
+}
+
 func main() {
+	// Read config from local file '.gator.config'
 	cfg, err := config.Read()
 	if err != nil {
-		errorMsg := fmt.Errorf("error occured while reading config file: %v", err)
-		fmt.Println(errorMsg)
+		log.Fatalf("error reading config file: %v", err)
 	}
-	fmt.Println(cfg)
 
-	err = cfg.SetUser("Aidan")
+	// Open connection to database
+	db, err := sql.Open("postgres", cfg.DbUrl)
 	if err != nil {
-		errorMsg := fmt.Errorf("error occured while writing to config: %v", err)
-		fmt.Println(errorMsg)
-	} 
-
-	cfg, err = config.Read()
-	if err != nil {
-		errorMsg := fmt.Errorf("error occured while reading config file: %v", err)
-		fmt.Println(errorMsg)
+		log.Fatalf("error connecting to database: %v", err)
 	}
-	fmt.Println(cfg)
+	dbQueries := database.New(db)
+
+	// Assign config and database to app state
+	var programState = state{
+		cfg: &cfg,
+		db: dbQueries,
+	}
+
+	// Create list of cli commands and register each
+	var cmds = commands{
+		registeredCommands: make(map[string]func(*state, command) error),
+	}
+	cmds.register("login", handlerLogin)
+	cmds.register("register", handlerRegister)
+	cmds.register("reset", handlerReset)
+	cmds.register("users", handlerUsers)
+	cmds.register("agg", handlerAgg)
+
+	// Check at least two arguments are provided: command + args
+	if len(os.Args) < 2 {
+		log.Fatal("Usage: cli <command> [args...]")
+		return
+	}
+
+	commandName := os.Args[1]
+	commandArgs := os.Args[2:]
+
+	err = cmds.run(&programState, command{Name: commandName, Args: commandArgs})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
