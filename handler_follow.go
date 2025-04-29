@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -10,22 +9,16 @@ import (
 	"github.com/google/uuid"
 )
 
-func handlerFollow(s *state, cmd command) error {
+func handlerFollow(s *state, cmd command, user database.User) error {
 	if len(cmd.Args) != 1 {
 		return fmt.Errorf("usage: %s <url>", cmd.Name)
 	}
 	ctx := context.Background()
 	url := cmd.Args[0]
-	currentUser := s.cfg.CurrentUserName
 
 	feed, err := s.db.GetFeedByUrl(ctx, url)
 	if err != nil {
 		return fmt.Errorf("error getting feed '%s' from database: %w", url, err)
-	}
-
-	user, err := s.db.GetUser(ctx, sql.NullString{String: currentUser, Valid: true})
-	if err != nil {
-		return fmt.Errorf("error getting user '%s' from database: %w", currentUser, err)
 	}
 
 	follow, err := s.db.CreateFeedFollows(ctx, database.CreateFeedFollowsParams{
@@ -46,21 +39,15 @@ func handlerFollow(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollowing(s *state, cmd command) error {
+func handlerFollowing(s *state, cmd command, user database.User) error {
 	ctx := context.Background()
-	currentUser := s.cfg.CurrentUserName
-
-	user, err := s.db.GetUser(ctx, sql.NullString{String: currentUser, Valid: true})
-	if err != nil {
-		return fmt.Errorf("error getting user '%s' from database: %w", currentUser, err)
-	}
 
 	follows, err := s.db.GetFeedFollowsForUser(ctx, user.ID)
 	if err != nil {
-		return fmt.Errorf("error getting follows for user '%s' from database: %w", currentUser, err)
+		return fmt.Errorf("error getting follows for user '%s' from database: %w", user.Name.String, err)
 	}
 	if len(follows) == 0 {
-		return fmt.Errorf("user '%s' not following any feeds", currentUser)
+		return fmt.Errorf("user '%s' not following any feeds", user.Name.String)
 	}
 
 	for _, follow := range follows {

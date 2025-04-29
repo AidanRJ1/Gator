@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -10,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func handlerAddFeed(s *state, cmd command) error {
+func handlerAddFeed(s *state, cmd command, user database.User) error {
 	if len(cmd.Args) != 2 {
 		return fmt.Errorf("usage: %s <name> <url>", cmd.Name)
 	}
@@ -18,12 +17,6 @@ func handlerAddFeed(s *state, cmd command) error {
 
 	name := cmd.Args[0]
 	url := cmd.Args[1]
-	userName := s.cfg.CurrentUserName
-
-	user, err := s.db.GetUser(ctx, sql.NullString{String: userName, Valid: true})
-	if err != nil {
-		return fmt.Errorf("error getting user '%s' from database: %w", userName, err)
-	}
 
 	feed, err := s.db.CreateFeed(ctx, database.CreateFeedParams{
 		ID:        uuid.New(),
@@ -41,16 +34,16 @@ func handlerAddFeed(s *state, cmd command) error {
 	fmt.Println(feed)
 
 	follow, err := s.db.CreateFeedFollows(ctx, database.CreateFeedFollowsParams{
-		ID: uuid.New(),
+		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		UserID: user.ID,
-		FeedID: feed.ID,
+		UserID:    user.ID,
+		FeedID:    feed.ID,
 	})
 	if err != nil {
 		return fmt.Errorf("error adding follow to database: %w", err)
 	}
-	
+
 	fmt.Println("follow successfully added to database!")
 	fmt.Println(follow)
 
