@@ -47,7 +47,8 @@ func handlerFollowing(s *state, cmd command, user database.User) error {
 		return fmt.Errorf("error getting follows for user '%s' from database: %w", user.Name.String, err)
 	}
 	if len(follows) == 0 {
-		return fmt.Errorf("user '%s' not following any feeds", user.Name.String)
+		fmt.Printf("user '%s' not following any feeds", user.Name.String)
+		return nil
 	}
 
 	for _, follow := range follows {
@@ -56,5 +57,30 @@ func handlerFollowing(s *state, cmd command, user database.User) error {
 		fmt.Println("---------- ---------- ----------")
 	}
 
+	return nil
+}
+
+func handlerUnfollow(s *state, cmd command, user database.User) error {
+	if len(cmd.Args) != 1 {
+		return fmt.Errorf("usage: %s <url>", cmd.Name)
+	}
+	
+	ctx := context.Background()
+	url := cmd.Args[0]
+
+	feed, err := s.db.GetFeedByUrl(ctx, url)
+	if err != nil {
+		return fmt.Errorf("error getting feed '%s' from database: %w", url, err)
+	}
+
+	err = s.db.DeleteFeedFollowForUser(ctx, database.DeleteFeedFollowForUserParams{
+		UserID: user.ID,
+		FeedID: feed.ID,
+	})
+	if err != nil {
+		return fmt.Errorf("error deleting follow '%s' from database: %w", url, err)
+	}
+
+	fmt.Println("follow successfully deleted!")
 	return nil
 }
