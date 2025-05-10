@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"time"
+	"strings"
 
 	"github.com/AidanRJ1/gator/internal/database"
+	"github.com/google/uuid"
 )
 
 func handlerAgg(s *state, cmd command) error {
@@ -41,6 +43,7 @@ func scrapeFeeds(s *state) {
 
 func scrapeFeed(db *database.Queries, feed database.Feed) {
 	ctx := context.Background()
+
 	err := db.MarkFeedFetched(ctx, database.MarkFeedFetchedParams{
 		ID: feed.ID,
 		UpdatedAt: time.Now().UTC(),
@@ -55,29 +58,32 @@ func scrapeFeed(db *database.Queries, feed database.Feed) {
 		log.Printf("Couldn't collect feed '%s': %v \n", feed.Name, err)
 	}
 
-	/*
-	rssFeed.Channel.Title = html.UnescapeString(rssFeed.Channel.Title)
-	rssFeed.Channel.Description = html.UnescapeString(rssFeed.Channel.Description)
-	for i, item := range rssFeed.Channel.Item {
-		rssFeed.Channel.Item[i].Title = html.UnescapeString(item.Title)
-		rssFeed.Channel.Item[i].Description = html.UnescapeString(item.Description)
-	}
-
-	fmt.Printf("Title: %s \n", rssFeed.Channel.Title)
-	fmt.Printf("Link: %s \n", rssFeed.Channel.Link)
-	fmt.Printf("Description: %s \n", rssFeed.Channel.Description)
-	fmt.Printf("Items: \n")
 	for _, item := range rssFeed.Channel.Item {
-		fmt.Printf("  - Title: %s \n", item.Title)
-		fmt.Printf("  - Link: %s \n", item.Link)
-		fmt.Printf("  - Description: %s \n", item.Description)
-		fmt.Printf("  - Publication Date: %s \n", item.PubDate)
-		fmt.Println("---------- ----------- -----------")
-	}
-	*/
+		publishedAt := sql.NullTime{}
+		if t, err := time.Parse(time.RFC1123Z, item.PubDate); err == nil {
+			publishedAt = sql.NullTime{
+				Time:  t,
+				Valid: true,
+			}
+		}
 
-	for _, item := range rssFeed.Channel.Item {
-		fmt.Printf("Found post: %s \n", item.Title)
+		_, err := db.CreatePost(ctx, database.CreatePostParams{
+			ID: uuid.New(),
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+			Title: item.Title,
+			Url: item.Link,
+			Description: sql.NullString{String: item.Description, Valid: true},
+			PublishedAt: publishedAt,
+			FeedID: feed.ID,
+		})
+		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+				continue
+			}
+			log.Printf("Couldn't create post: %v", err)
+			continue
+		}
 	}
 	log.Printf("Feed %s collected, %v posts found", feed.Name, len(rssFeed.Channel.Item))
 }
